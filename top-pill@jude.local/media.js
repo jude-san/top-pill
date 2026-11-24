@@ -32,6 +32,12 @@ const PlayerProxy = Gio.DBusProxy.makeProxyWrapper(`<node>
 </interface></node>`);
 
 const VIDEO_APPS = ['vlc', 'mpv', 'totem', 'celluloid', 'showtime', 'clapper', 'smplayer', 'haruna', 'kodi'];
+// Video calls also publish a media player (the call's audio). They aren't
+// something to play or skip, so they're left out of Media; the microphone
+// and camera indicators already show a call is on.
+const CALL_APPS = ['teams', 'zoom', 'skype', 'webex'];
+const CALL_URL = /(teams\.(microsoft|live|cloud\.microsoft)|teams\.cloud|meet\.google\.com|zoom\.us|webex\.com|whereby\.com|meet\.jit\.si|app\.slack\.com\/huddle|discord\.com\/channels)/i;
+const CALL_TITLE = /(microsoft teams|google meet|zoom meeting|zoom workplace|webex|whereby|jitsi|huddle|^\s*(meet|calendar|chat|call(ing)?|meeting)\s*[|·–-])/i;
 const BROWSERS = ['firefox', 'chromium', 'chrome', 'brave', 'edge', 'vivaldi', 'opera', 'epiphany', 'zen'];
 const VIDEO_EXT = /\.(mp4|mkv|webm|avi|mov|m4v|flv|wmv|ogv)(\?|$)/i;
 
@@ -132,7 +138,7 @@ class Player {
     }
 
     get ready() {
-        return !!this._player && !!this.title;
+        return !!this._player && !!this.title && !this.isCall;
     }
 
     get appKey() {
@@ -171,6 +177,11 @@ class Player {
         this.isVideo = VIDEO_EXT.test(url) ||
             VIDEO_APPS.some(a => key.includes(a)) ||
             (BROWSERS.some(b => key.includes(b)) && this.artists.length === 0);
+        const browser = BROWSERS.some(b => key.includes(b));
+        this.isCall = CALL_APPS.some(a => key.includes(a)) ||
+            (browser && this.artists.length === 0 && (
+                CALL_URL.test(url) || CALL_TITLE.test(this.title) ||
+                (this.length > 0 && this.length < 10e6))); // a call or a short sound, not a track
         const art = get('mpris:artUrl') ?? '';
         if (art !== this.artUrl) {
             this.artUrl = art;
