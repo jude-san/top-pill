@@ -8,7 +8,7 @@ Requires **GNOME Shell 50** (Wayland). Tested on Ubuntu 26.04.
 
 ## Install
 ```
-git clone https://github.com/Jude/top-pill.git
+git clone https://github.com/jude-san/top-pill.git
 cd top-pill
 bash install.sh
 ```
