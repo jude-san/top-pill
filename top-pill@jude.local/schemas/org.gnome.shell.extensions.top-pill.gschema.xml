@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.top-pill" path="/org/gnome/shell/extensions/top-pill/">
+    <key name="theme" type="s">
+      <choices><choice value="auto"/><choice value="dark"/><choice value="light"/><choice value="glass"/></choices>
+      <default>'glass'</default>
+      <summary>Look of the pill</summary>
+    </key>
+    <key name="replace-banners" type="b">
+      <default>true</default>
+      <summary>Show new notifications as a peek in the pill instead of GNOME's banner</summary>
+    </key>
+    <key name="peek-delay" type="i">
+      <range min="0" max="3000"/>
+      <default>650</default>
+      <summary>Wait this long (ms) before peeking, so bursts arrive together</summary>
+    </key>
+    <key name="peek-duration" type="i">
+      <range min="2000" max="15000"/>
+      <default>4800</default>
+      <summary>How long a peek stays (ms)</summary>
+    </key>
+    <key name="peek-sound" type="b">
+      <default>true</default>
+      <summary>Play a sound with peeks (follows each app's sound setting)</summary>
+    </key>
+    <key name="tuck-away" type="b">
+      <default>true</default>
+      <summary>Slide into the top bar when a window is underneath or in the overview</summary>
+    </key>
+    <key name="audio-bars" type="b">
+      <default>true</default>
+      <summary>Make the idle bars react to what is playing</summary>
+    </key>
+    <key name="adaptive-tint" type="b">
+      <default>true</default>
+      <summary>Tint the media view with the artwork colour</summary>
+    </key>
+    <key name="show-privacy" type="b">
+      <default>true</default>
+      <summary>Show microphone, camera and screen-sharing indicators</summary>
+    </key>
+    <key name="show-next-bubble" type="b">
+      <default>true</default>
+      <summary>Show the next-activity bubble beside the pill</summary>
+    </key>
+    <key name="show-charging" type="b">
+      <default>true</default>
+      <summary>Show a brief charging peek when the charger is plugged in</summary>
+    </key>
+    <key name="watch-ai" type="b">
+      <default>true</default>
+      <summary>Show AI coding agents and local models as live activities</summary>
+    </key>
+    <key name="ai-done-peek" type="b">
+      <default>true</default>
+      <summary>Peek when an AI agent finishes working and waits for you</summary>
+    </key>
+    <key name="download-peek" type="b">
+      <default>true</default>
+      <summary>Peek when a browser download finishes</summary>
+    </key>
+    <key name="trending-enabled" type="b">
+      <default>true</default>
+      <summary>Show trending headlines</summary>
+    </key>
+    <key name="trending-sources" type="as">
+      <default>['hn', 'google-tech', 'lobsters', 'devto-devops', 'devto-kubernetes', 'lobsters-devops', 'newstack', 'hf-models', 'hf-papers', 'devto-ai', 'github', 'showhn']</default>
+      <summary>Enabled trending sources</summary>
+    </key>
+    <key name="trending-interval" type="i">
+      <range min="10" max="720"/>
+      <default>30</default>
+      <summary>Minutes between trending refreshes</summary>
+    </key>
+    <key name="toggle-shortcut" type="as">
+      <default><![CDATA[['<Super><Shift>n']]]></default>
+      <summary>Open or close the pill</summary>
+    </key>
+    <key name="show-stats" type="b">
+      <default>true</default>
+      <summary>Show CPU, memory and temperature in the Live tab</summary>
+    </key>
+    <key name="bluetooth-peek" type="b">
+      <default>true</default>
+      <summary>Peek when a Bluetooth device connects or disconnects</summary>
+    </key>
+    <key name="lyrics" type="b">
+      <default>true</default>
+      <summary>Show synced lyrics (from LRCLIB) in the media view</summary>
+    </key>
+    <key name="focus-minutes" type="i">
+      <range min="5" max="120"/>
+      <default>25</default>
+      <summary>Focus session length in minutes</summary>
+    </key>
+    <key name="focus-break-minutes" type="i">
+      <range min="1" max="60"/>
+      <default>5</default>
+      <summary>Break length in minutes</summary>
+    </key>
+    <key name="clipboard-history" type="b">
+      <default>true</default>
+      <summary>Keep a history of copied text (in memory only; password-manager copies are skipped)</summary>
+    </key>
+    <key name="ai-usage" type="b">
+      <default>true</default>
+      <summary>Show Claude and ChatGPT plan usage</summary>
+    </key>
+    <key name="meetings" type="b">
+      <default>true</default>
+      <summary>Show upcoming calendar events with a Join button</summary>
+    </key>
+    <key name="meeting-reminder" type="i">
+      <range min="0" max="60"/>
+      <default>5</default>
+      <summary>Peek this many minutes before an event (0 = off)</summary>
+    </key>
+    <key name="approvals" type="b">
+      <default>true</default>
+      <summary>Show agent permission requests in the pill</summary>
+    </key>
+  </schema>
+</schemalist>

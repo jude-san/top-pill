@@ -1,0 +1,137 @@
+#!/usr/bin/env bash
+# top-pill — check on, reload and roll back the Top Pill GNOME extension.
+#
+#   top-pill status     what each part is doing, plus recent errors
+#   top-pill doctor     status plus checks of the installed files and setup
+#   top-pill reload     restart Top Pill in place (no log-out)
+#   top-pill rollback   go back to the previous installed build
+#   top-pill builds     list installed builds
+#   top-pill logs       Top Pill lines from this login's journal
+#   top-pill hooks enable|disable|status   answer Claude Code / Codex prompts in the pill
+set -uo pipefail
+UUID="top-pill@jude.local"
+DEST="$HOME/.local/share/gnome-shell/extensions/$UUID"
+BUILDS="$DEST/builds"
+OBJ=/org/gnome/Shell/Extensions/TopPill
+IFACE=org.gnome.Shell.Extensions.TopPill.Ops
+
+call() { gdbus call --session --timeout 5 --dest org.gnome.Shell --object-path "$OBJ" --method "$IFACE.$1" 2>/dev/null; }
+
+status_json() {
+  local raw
+  raw="$(call Status)" || return 1
+  # gdbus prints ('...',) — let Python unwrap the GVariant string safely.
+  python3 -c 'import ast,sys; print(ast.literal_eval(sys.stdin.read().strip())[0])' <<<"$raw"
+}
+
+show_status() {
+  local js
+  if ! js="$(status_json)"; then
+    echo "✗ Top Pill isn't answering. Is it enabled? (gnome-extensions info $UUID)"
+    return 1
+  fi
+  TP_JSON="$js" python3 - <<'PY'
+import json, os
+s = json.loads(os.environ['TP_JSON'])
+ok = lambda b: "✓" if b else "✗"
+print(f"Top Pill {s['version']}  build {s['build']}  GNOME Shell {s['gnomeShell']}  up {s['uptimeSeconds']//60} min")
+p, sh = s['pill'], s['shell']
+print(f"Pill: {p['mode']}{' (tucked)' if p['tucked'] else ''}, animating {p['animating']}, holding input: {'yes' if p['holdingInput'] else 'no'}")
+if sh['modalCount'] and not p['holdingInput'] and p['mode'] != 'expanded':
+    print(f"  ! Something else is holding input (modal count {sh['modalCount']}). Super+L and unlock frees it.")
+print("Parts:")
+for k, v in s['parts'].items():
+    print(f"  {ok(v == 'ok')} {k}{'' if v == 'ok' else ': ' + v}")
+print("Data:")
+for k, v in s['data'].items():
+    if v is not None:
+        print(f"  {k}: {v}")
+errs = s.get('recentErrors') or []
+print(f"Recent errors: {len(errs)}")
+for e in errs[-8:]:
+    print(f"  {e['at'][11:19]} {e['where']}: {e['message']}")
+PY
+}
+
+doctor() {
+  local bad=0
+  echo "== Extension"
+  if gnome-extensions info "$UUID" >/dev/null 2>&1; then
+    gnome-extensions info "$UUID" | grep -E "State|Enabled" | sed 's/^ */  /'
+  else
+    echo "  ✗ not installed"; return 1
+  fi
+  echo "== Installed files"
+  local cur; cur="$(cat "$BUILDS/current" 2>/dev/null)"
+  if [ -n "$cur" ] && [ -f "$BUILDS/$cur/SUMS" ]; then
+    if (cd "$BUILDS/$cur" && sha256sum --quiet -c SUMS >/dev/null 2>&1); then
+      echo "  ✓ build $cur is intact"
+    else
+      echo "  ✗ build $cur has changed or missing files — run install.sh again"; bad=1
+    fi
+  else
+    echo "  ? build ${cur:-none} has no checksum list (installed by an older install.sh)"
+  fi
+  [ -f "$BUILDS/.fallback" ] && { echo "  ! $(cat "$BUILDS/.fallback")"; bad=1; }
+  echo "== Running"
+  show_status || bad=1
+  echo "== Agent hooks"
+  if [ -f "$HOME/.claude/settings.json" ] && grep -q top-pill-hook "$HOME/.claude/settings.json"; then echo "  ✓ Claude Code"; else echo "  - Claude Code: not set up"; fi
+  if [ -f "$HOME/.codex/hooks.json" ] && grep -q top-pill-hook "$HOME/.codex/hooks.json"; then echo "  ✓ Codex"; else echo "  - Codex: not set up"; fi
+  echo "== Audio bars"
+  if command -v gst-inspect-1.0 >/dev/null && gst-inspect-1.0 pulsesrc >/dev/null 2>&1; then echo "  ✓ level meter available"; else echo "  - pulsesrc missing (bars use a gentle animation)"; fi
+  return $bad
+}
+
+reload() {
+  if call Reload >/dev/null; then
+    echo "→ Reloading…"
+  else
+    gnome-extensions disable "$UUID"
+    # wait for GNOME to finish stopping it, or the enable can be lost
+    for _ in $(seq 1 30); do
+      gnome-extensions info "$UUID" 2>/dev/null | grep -qiE "State: (INACTIVE|DISABLED)" && break
+      sleep 0.2
+    done
+    sleep 0.5
+    gnome-extensions enable "$UUID"
+  fi
+  for _ in $(seq 1 20); do
+    sleep 0.3
+    if status_json >/dev/null; then
+      echo "✓ Top Pill is running build $(status_json | python3 -c 'import json,sys; print(json.load(sys.stdin)["build"])')"
+      return 0
+    fi
+  done
+  echo "✗ Top Pill didn't come back within 6 s. Run: top-pill logs"
+  return 1
+}
+
+builds() {
+  local cur; cur="$(cat "$BUILDS/current" 2>/dev/null)"
+  for d in $(ls -1 "$BUILDS" 2>/dev/null | grep -v '^\.' | grep -v '^current$' | sort -r); do
+    [ "$d" = "$cur" ] && echo "* $d (current)" || echo "  $d"
+  done
+}
+
+rollback() {
+  local cur prev
+  cur="$(cat "$BUILDS/current" 2>/dev/null)"
+  prev="$(ls -1 "$BUILDS" 2>/dev/null | grep -v '^\.' | grep -v '^current$' | sort -r | awk -v c="$cur" 'f{print; exit} $0==c{f=1}')"
+  if [ -z "$prev" ]; then echo "✗ No older build to go back to."; builds; return 1; fi
+  echo "$prev" > "$BUILDS/current"
+  echo "→ Switched from $cur to $prev"
+  reload
+}
+
+case "${1:-status}" in
+  status) show_status ;;
+  doctor) doctor ;;
+  reload) reload ;;
+  rollback) rollback ;;
+  builds) builds ;;
+  hooks) bash "$HOME/.local/share/top-pill/agent-hooks/agent-hooks.sh" "${2:-status}" ;;
+  logs) journalctl --user -b -o short-precise /usr/bin/gnome-shell 2>/dev/null | grep -iE "top pill|top-pill" | tail -${2:-60} ;;
+  -h|--help|help) sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//' ;;
+  *) echo "Unknown command: $1"; sed -n '4,11p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+esac

@@ -1,0 +1,8 @@
+{
+  "uuid": "top-pill@jude.local",
+  "name": "Top Pill",
+  "description": "A pill at the top of the screen for now playing, notifications, live activities (updates, downloads, AI agents), privacy indicators and trending tech headlines. Click to expand, right-click for settings.",
+  "shell-version": ["50"],
+  "settings-schema": "org.gnome.shell.extensions.top-pill",
+  "version-name": "1.0"
+}

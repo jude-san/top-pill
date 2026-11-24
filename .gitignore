@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+*.zip
+top-pill@jude.local/schemas/gschemas.compiled
+top-pill@jude.local/builds/
