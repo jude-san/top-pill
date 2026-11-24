@@ -42,7 +42,7 @@ If one part fails (say, the calendar), the rest keeps working and `top-pill stat
 | Inbox | GNOME's notifications with real app icons, category filters, Clear all, and a buddy to play with when it's empty |
 | Media | Any MPRIS player (Spotify, browsers, VLC…) with artwork, an artwork-coloured tint, a wavy progress line you can click to seek, and controls |
 | Media | …plus synced lyrics (current and next line) when the song has them |
-| Live | CPU, memory and temperature, then Software Updater (aptdaemon), App Center and snap refreshes (snapd), PackageKit, browser downloads, Claude Code, Codex CLI, Gemini CLI, Copilot CLI, Ollama and LM Studio, plus microphone, camera and screen-sharing indicators |
+| Live | CPU, memory and temperature, then Software Updater (aptdaemon), App Center and snap refreshes (snapd), PackageKit, downloads (browsers and download managers such as Free Download Manager), Claude Code, Codex CLI, Gemini CLI, Copilot CLI, Ollama and LM Studio, plus microphone, camera and screen-sharing indicators |
 | Today | Your next calendar events with a **Join** button for Meet, Zoom, Teams and Webex links; a focus timer (25/5 by default); Claude and ChatGPT plan usage with reset times |
 | Clipboard | The last 30 things you copied (text). Click one to copy it again |
 | Trending | Tech, DevOps, AI and New tools headlines from free public feeds |

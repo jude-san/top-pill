@@ -13,7 +13,6 @@ import Shell from 'gi://Shell';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as GrabHelper from 'resource:///org/gnome/shell/ui/grabHelper.js';
-import {getPointerWatcher} from 'resource:///org/gnome/shell/ui/pointerWatcher.js';
 import * as Volume from 'resource:///org/gnome/shell/ui/status/volume.js';
 
 import {unit, animationsEnabled, clamp, timeout, clearSource, fmtTime, fmtAgo, openUri, themedIcon, Signals, report} from './util.js';
@@ -149,7 +148,6 @@ export const Pill = GObject.registerClass({
         this._tab = 'inbox';
         this._actIndex = 0;
         this._tucked = false;
-        this._near = false;
         this._inboxCat = 'All';
         this._trendCat = 'All';
         this._selectedNotif = null;
@@ -2178,42 +2176,13 @@ export const Pill = GObject.registerClass({
     }
 
     _updateTuck() {
-        const want = this._settings.get_boolean('tuck-away') && this._mode === 'idle' && !this._near &&
+        // Stays in the top bar while a window is underneath, wherever the
+        // pointer is: dropping down on hover covered browser tabs.
+        const want = this._settings.get_boolean('tuck-away') && this._mode === 'idle' &&
             (Main.overview.visible || this._windowUnder());
         if (want !== this._tucked) {
             this._tucked = want;
             this._relayout(true);
-        }
-        // Watch the pointer only while tucked (to slide back out when it comes near).
-        const watchPointer = this._settings.get_boolean('tuck-away') && this._mode === 'idle' && (this._tucked || this._near);
-        if (watchPointer && !this._pointerWatch) {
-            this._pointerWatch = getPointerWatcher().addWatch(120, (px, py) => this._onPointer(px, py));
-        } else if (!watchPointer && this._pointerWatch) {
-            this._pointerWatch.remove();
-            this._pointerWatch = null;
-        }
-    }
-
-    _onPointer(px, py) {
-        const U = this._U;
-        const w = this._groupW ?? 260 * U;
-        const [x, y] = this._floatPos(this._body.width || w);
-        const margin = 28 * U;
-        // In the overview the search entry lives here, so only windows count.
-        const near = !Main.overview.visible &&
-            px > x - margin && px < x + w + margin && py > y - 6 * U && py < y + 36 * U + margin;
-        if (near) {
-            this._nearOff = clearSource(this._nearOff);
-            if (!this._near) {
-                this._near = true;
-                this._updateTuck();
-            }
-        } else if (this._near && !this._nearOff) {
-            this._nearOff = timeout(500, () => {
-                this._nearOff = 0;
-                this._near = false;
-                this._updateTuck();
-            });
         }
     }
 

@@ -286,7 +286,7 @@ class Snapd {
 }
 
 /* ---------- Browser downloads ---------- */
-const PARTIAL = /\.(part|crdownload|download|opdownload)$/;
+const PARTIAL = /\.(part|crdownload|download|opdownload|fdmdownload|!qB)$/;
 // A partial file that has not grown for this long is a leftover, not a download.
 const STALE_US = 90 * 1e6;
 
@@ -294,6 +294,7 @@ class Downloads {
     constructor(hub) {
         this._hub = hub;
         this._files = new Map(); // path -> {size, lastSize, speed, started}
+        this._writes = new Map(); // path -> {first, last}: files other apps are writing
         const dir = GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DOWNLOAD) ??
             GLib.build_filenamev([GLib.get_home_dir(), 'Downloads']);
         this._dir = Gio.File.new_for_path(dir);
@@ -329,7 +330,10 @@ class Downloads {
     }
 
     _active(d) {
-        return GLib.get_monotonic_time() - d.changed < STALE_US;
+        // a plain file that stopped being written is done (or paused); the
+        // app's own notification says which
+        const stale = d.generic ? 10e6 : STALE_US;
+        return GLib.get_monotonic_time() - d.changed < stale;
     }
 
     _onChanged(file, other, ev) {
@@ -344,6 +348,8 @@ class Downloads {
                 this._finished(final);
             else if (final)
                 this._track(final);
+        } else if (ev === T.CHANGED || ev === T.CHANGES_DONE_HINT) {
+            this._onWrite(path, ev === T.CHANGES_DONE_HINT);
         } else if ((ev === T.DELETED || ev === T.MOVED_OUT) && this._files.has(path)) {
             this._files.delete(path);
             // Firefox removes "name.ext.part" and keeps "name.ext".
@@ -358,6 +364,35 @@ class Downloads {
         }
     }
 
+    // Download managers that write straight to the final name (Free Download
+    // Manager, wget, curl…) show up as a file that keeps being written to.
+    _onWrite(path, done) {
+        const now = GLib.get_monotonic_time();
+        const d = this._files.get(path);
+        if (d) {
+            d.changed = now;
+            if (done && d.generic)
+                d.doneAt = now;
+            return;
+        }
+        if (PARTIAL.test(path) || GLib.path_get_basename(path).startsWith('.'))
+            return;
+        const w = this._writes.get(path) ?? {first: now, last: now};
+        w.last = now;
+        this._writes.set(path, w);
+        for (const [p, x] of this._writes) {
+            if (now - x.last > 30e6)
+                this._writes.delete(p);
+        }
+        if (!done && now - w.first > 3e6) {
+            this._writes.delete(path);
+            this._track(path);
+            const t = this._files.get(path);
+            if (t)
+                t.generic = true;
+        }
+    }
+
     _finished(path) {
         this._hub.emit('download-finished', {path, name: GLib.path_get_basename(path)});
         this._hub.poll();
@@ -369,6 +404,10 @@ class Downloads {
 
     refresh(dt) {
         for (const [path, d] of this._files) {
+            if (d.generic && GLib.get_monotonic_time() - d.changed > 60e6) {
+                this._files.delete(path);
+                continue;
+            }
             try {
                 const size = Gio.File.new_for_path(path).query_info('standard::size', 0, null).get_size();
                 const inst = Math.max(0, size - d.lastSize) / Math.max(dt, 0.25);
